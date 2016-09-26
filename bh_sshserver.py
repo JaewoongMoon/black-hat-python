@@ -1,6 +1,3 @@
-#!/usr/bin/python
-# -*- coding: UTF-8 -*-
-
 import socket
 import paramiko
 import threading
