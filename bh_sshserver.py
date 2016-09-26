@@ -39,7 +39,8 @@ try:
         bhSession.start_server(server=server)
     except paramiko.SSHException, x:
         print '[-] SSH negotiation failed.'
-        chan = bhSession.accept(20)
+        
+    chan = bhSession.accept(100)
     print '[+] Authenticated!'
     print chan.recv(1024)
     chan.send('Welcome to bh_ssh')
