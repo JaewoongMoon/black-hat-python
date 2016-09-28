@@ -1,3 +1,6 @@
+#!/usr/bin/python
+# -*- coding: UTF-8 -*-
+
 import Queue
 import threading
 import os
@@ -5,32 +8,31 @@ import urllib2
 
 threads = 10
 
-# 1) We begine by defining the remote target website and the local directory into 
+# 주제 : 웹 어플리케이션을 매핑하기 (Mapping Open Source Web App Installations)
+# [*] 일종의 웹 스파이더 같은 프로그램이라고 보면될 것 같다. 
+# 1) We begin by defining the remote target website and the local directory into 
 # which we have downloaded and extracted the web application. 
 # We also create a simple list of file extensions that we are not insterested in 
 # fingerprinting. This list can be different depending on the target application. 
-target = "http://www.blackhatpython.com"
-directory = "/root/Downloads/joomla-3.1.1"
-filters = [".jpg",".gif",".png",".css"]
+target = "www.jw.com"
+directory = "/var/www"  # 앱 파일을 다운로드 받은 경로 
+filters = [".jpg",".gif",".png",".css"] # 관심없는 파일 확장자 리스트
 
 os.chdir(directory)
 
 # 2) The web_paths variable is our Queue object where we will store the files 
 # that we'll attempt to locate on the remote server. 
+# 파일을 저장할 큐 오브젝트
 web_paths = Queue.Queue()
 
-# 3) We then use the os.walk function to walk through all of the files and directories 
-# in the local web application directory. As we walk through the files and directories,
-# we're building the full path to the target files and testing them against our filter list
-# to make sure we are only looking for the file types we want. For each valid files we find
-# locally, we add it to our web_paths Queue. 
-for r,d,f in os.walk("."):
-    for files in f:
-        remote_path = "%s/%s" % (r, files)
+# 로컬 디렉토리의 웹 어플리케이션을 순회하기 위해 os.walk 펑션을 사용. 
+for root,dirs,files in os.walk("."):
+    for _file in files:
+        remote_path = "%s/%s" % (root, _file)
         if remote_path.startswith("."):
-            remote_path = remote_path[1:]
-        if os.path.splitext(files)[1] not in filters:
-            web_paths.put(remote_path)
+            remote_path = remote_path[1:] #.으로 시작하는 경로이면 .이후로 값을 변경한다.
+        if os.path.splitext(_file)[1] not in filters:
+            web_paths.put(remote_path) # 필터에 걸리지 않는 확장자라면 큐에 넣는다.
         
             
 def test_remote():
@@ -46,19 +48,11 @@ def test_remote():
             print "[%d] => %s" % (response.code, path)  #5)
             response.close()
             
-        except urllib2.HTTPError as error:  #6)
+        except urllib2.HTTPError as error:  #6) .htaccess file 설정등으로 블록되었을 때 
             print "Failed %s" % error.code
             pass
 
-# 7) We are creating a number of threads (as set at the top of the file)
-# that will each be called the test_remote function operates in a loop
-# that will keep executing until the web_paths Queue is empty. 
-# On each iteration of the loop, we grab a path from the Queue 4),
-# add it to the target website's base path, and then attemp to retrieve it. 
-# If we're successful in retrieving the file, we output the HTTP status code
-# and the full path to the file 5). 
-# If the file  is not found or is protected by an .htaccess file, this will cause
-# urllib2 to throw an error, which we handle 6) so the loop can continue executing. 
+# 설정된 스레드 수만 큼 동작한다.
 for i in range(threads):
         print "Spawning thread: %d" % i
         t = threading.Thread(target=test_remote)
