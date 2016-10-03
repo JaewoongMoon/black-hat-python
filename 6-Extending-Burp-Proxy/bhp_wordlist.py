@@ -17,8 +17,7 @@
 # a website and generate a wordlist based on site content. Though if you've
 # already used Burp Spider to crawl the site, why send more traffic just to 
 # generate a wordlist? Plus, those scripts usually have a ton of command-line
-# arguments to remember. If you're anything like me, you've already memorized 
-# enough command-line arguments to impress your friends, so let's make Burp 
+# argumentsmmand-line arguments to impress your friends, so let's make Burp 
 # do the heavy lifting. 
 
 from burp import IBurpExtender
@@ -58,72 +57,75 @@ class BurpExtender(IBurpExtender, IContextMenuFactory):
         # we set up our extension
         callbacks.setExtensionName("BHP Wordlist")
         callbacks.registerContextMenuFactory(self)
+        return 
         
+    def createMenuItems(self, context_menu):
+        self.context = context_menu
+        menu_list = ArrayList()
+        menu_list.add(JMenuItem("Create Wordlist", actionPerformed=self.wordlist_menu))
+        
+        return menu_list
+    
+    # 메뉴 클릭시 동작하는 핸들러 펑션 
+    def wordlist_menu(self, event):
+        
+        # grab the details of what the user clicked
+        http_traffic = self.context.getSelectedMessages()
+        
+        for traffic in http_traffic:
+            http_service = traffic.getHttpService()
+            host         = http_service.getHost()
+            
+            self.hosts.add(host)
+            
+            http_response = traffic.getResponse()
+            
+            if http_response:
+                self.get_words(http_response)
+        self.display_wordlist()
         return 
     
-def createMenuItems(self, context_menu):
-    self.context = context_menu
-    menu_list = ArrayList()
-    menu_list.add(JMenuItem("Create Wordlist", actionPerformed=self.wordlist_menu))
-    
-    return menu_list
-
-def wordlist_menu(self, event):
-    
-    # grab the details of what the user clicked
-    http_traffic = self.context.getSelectedMessages()
-    
-    for traffic in http_traffic:
-        http_service = traffic.getHttpService()
-        host         = http_service.getHost()
+    # HTTP Response 로부터 사이트 특정의 단어를 추출해주는 펑션
+    def get_words(self, http_response):
         
-        self.hosts.add(host)
+        headers, body = http_response.tostring().split('\r\n\r\n', 1)
         
-        http_response = traffic.getResponse()
+        # skip non-text responses
+        if headers.lower().find("content-type: text") == -1:
+            return 
         
-        if http_response:
-            self.get_words(http_response)
-    self.display_wordlist()
-    return 
-
-def get_words(self, http_response):
-    
-    headers, body = http_response.tostring().split('\r\n\r\n', 1)
-    
-    # skip non-text responses
-    if headers.lower().find("content-type: text") == -1:
+        tag_stripper = TagStripper()
+        page_text = tag_stripper.strip(body)
+        
+        words = re.findall("[a-zA-Z]\w{2,}", page_text)
+        
+        for word in words:
+            
+            # filter out long strings
+            if len(word) <= 12:
+                self.wordlist.add(word.lower())
         return 
     
-    tag_stripper = TagStripper()
-    page_text = tag_stripper.strip(body)
-    
-    words = re.findall("[a-zA-Z]\w{2,}", page_text)
-    
-    for word in words:
+    # 단어 뒤에 접미어를 붙여서 다양한 비밀번호 패턴을 만들어 낸다.
+    def mangle(self, word):
+        year     = datetime.now().year
+        suffixes = ["", "1", "!", year]
+        mangled = []
         
-        # filter out long strings
-        if len(word) <= 12:
-            self.wordlist.add(word.lower())
-    return 
-
-def mangle(self, word):
-    year     = datetime.now().year
-    suffixes = ["", "1", "!", year]
-    mangled = []
+        for password in (word, word.capitalize()):
+            for suffix in suffixes:
+                mangled.append("%s%s" % (password, suffix))
+                
+        return mangled
     
-    for password in (word, word.capitalize()):
-        for suffix in suffixes:
-            mangled.append("%s%s" % (password, suffix))
-            
-    return mangled
-
-def display_wordlist(self):
-    
-    print "#! comment: BHP Wordlist for site(s) %s" % ", ".join(self.hosts)
-    
-    for word in sorted(self.wordlist):
-        for password in self.mangle(word):
-            print password
-            
-    return 
+    # 만들어진 단어 목록을 보여준다. 
+    def display_wordlist(self):
+        
+        print "#! comment: BHP Wordlist for site(s) %s" % ", ".join(self.hosts)
+        
+        for word in sorted(self.wordlist):
+            for password in self.mangle(word):
+                print password
+                
+        return 
     
